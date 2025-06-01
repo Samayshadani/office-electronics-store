@@ -4,10 +4,10 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Star, Heart, ShoppingCart } from "lucide-react"
+import { Star, Heart, ShoppingCart, Link } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
-
+import { useRouter } from 'next/navigation';
 const featuredProducts = [
   {
     id: 1,
@@ -16,7 +16,7 @@ const featuredProducts = [
     price: 2499,
     originalPrice: 2799,
     category: "laptops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/Macbook.jpg?height=300&width=300",
     rating: 4.9,
     reviews: 128,
     stock: 15,
@@ -30,7 +30,7 @@ const featuredProducts = [
     price: 1899,
     originalPrice: 2199,
     category: "desktops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/desktop.jpg?height=300&width=300",
     rating: 4.7,
     reviews: 89,
     stock: 8,
@@ -44,7 +44,7 @@ const featuredProducts = [
     price: 399,
     originalPrice: 449,
     category: "accessories",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/headphone.jpg?height=300&width=300",
     rating: 4.8,
     reviews: 256,
     stock: 25,
@@ -58,7 +58,7 @@ const featuredProducts = [
     price: 1799,
     originalPrice: 1999,
     category: "laptops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/product.jpg?height=300&width=300",
     rating: 4.6,
     reviews: 167,
     stock: 12,
@@ -89,6 +89,12 @@ export function FeaturedProducts() {
       description: `${product.name} has been added to your cart.`,
     })
   }
+    const router = useRouter();
+
+  const handleClick = () => {
+    router.push('/products');
+  };
+
 
   return (
     <section className="py-20 bg-gray-50">
@@ -180,9 +186,9 @@ export function FeaturedProducts() {
         </div>
 
         <div className="text-center mt-12">
-          <Button size="lg" variant="outline" className="px-8">
-            View All Products
-          </Button>
+            <Button onClick={handleClick} size="lg" variant="outline" className="px-8">
+              View All Products
+            </Button>
         </div>
       </div>
     </section>

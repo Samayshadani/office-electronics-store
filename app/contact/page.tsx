@@ -87,9 +87,7 @@ export default function ContactPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900">Address</h3>
                         <p className="text-gray-600 mt-1">
-                          123 Business Ave, Tech City, TC 12345
-                          <br />
-                          United States
+                          Shop No-2, Usmani Complex, Opp. St. Xaviers School Doranda, Ranchi, Jharkhand, India- 834002
                         </p>
                       </div>
                     </div>
@@ -100,9 +98,9 @@ export default function ContactPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900">Phone</h3>
                         <p className="text-gray-600 mt-1">
-                          Sales: +1 (555) 123-4567
+                          call: +91 7488388900
                           <br />
-                          Support: +1 (555) 987-6543
+                          Whatapp : 7004787478
                         </p>
                       </div>
                     </div>
@@ -113,9 +111,7 @@ export default function ContactPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900">Email</h3>
                         <p className="text-gray-600 mt-1">
-                          sales@officeelectronics.com
-                          <br />
-                          support@officeelectronics.com
+                          dashingdealindia@gmail.com
                         </p>
                       </div>
                     </div>

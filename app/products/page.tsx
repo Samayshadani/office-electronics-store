@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Star, Heart, ShoppingCart, Filter, Grid, List } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from 'next/navigation';
 
 const products = [
   {
@@ -19,7 +20,7 @@ const products = [
     price: 2499,
     originalPrice: 2799,
     category: "laptops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/Macbook.jpg?height=300&width=300",
     rating: 4.9,
     reviews: 128,
     stock: 15,
@@ -33,7 +34,7 @@ const products = [
     price: 1899,
     originalPrice: 2199,
     category: "desktops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/desktop.jpg?height=300&width=300",
     rating: 4.7,
     reviews: 89,
     stock: 8,
@@ -47,7 +48,7 @@ const products = [
     price: 399,
     originalPrice: 449,
     category: "accessories",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/headphone.jpg?height=300&width=300",
     rating: 4.8,
     reviews: 256,
     stock: 25,
@@ -61,7 +62,7 @@ const products = [
     price: 1799,
     originalPrice: 1999,
     category: "laptops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/product.jpg?height=300&width=300",
     rating: 4.6,
     reviews: 167,
     stock: 12,
@@ -75,7 +76,7 @@ const products = [
     price: 1299,
     originalPrice: 1499,
     category: "desktops",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/eliteDesk.jpg?height=300&width=300",
     rating: 4.5,
     reviews: 94,
     stock: 18,
@@ -89,7 +90,7 @@ const products = [
     price: 99,
     originalPrice: 119,
     category: "accessories",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/MXmaster.jpg?height=300&width=300",
     rating: 4.7,
     reviews: 342,
     stock: 45,
@@ -165,6 +166,12 @@ export default function ProductsPage() {
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]))
   }
+    const router = useRouter();
+
+  const handleClick = () => {
+    router.push('/product/id');
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -325,7 +332,7 @@ export default function ProductsPage() {
                     <div className="space-y-3">
                       <div>
                         <p className="text-sm text-gray-500 font-medium">{product.brand}</p>
-                        <h3 className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
+                        <h3 onClick={handleClick} className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
                           {product.name}
                         </h3>
                       </div>

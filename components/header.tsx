@@ -24,7 +24,7 @@ export function Header() {
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
               <span className="text-white font-bold text-sm">OE</span>
             </div>
-            <span className="font-bold text-xl text-gray-900">Office Electronics</span>
+            <span className="font-bold text-xl text-gray-900 pr-8">Office Electronics</span>
           </Link>
 
           {/* Desktop Navigation */}
