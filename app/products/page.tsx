@@ -1,105 +1,51 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Star, Heart, ShoppingCart, Filter, Grid, List } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
-import { useRouter } from 'next/navigation';
+import { fetchAllProducts } from "@/services/productService"
 
-const products = [
-  {
-    id: 1,
-    name: "MacBook Pro 16-inch M3",
-    brand: "Apple",
-    price: 2499,
-    originalPrice: 2799,
-    category: "laptops",
-    image: "/Macbook.jpg?height=300&width=300",
-    rating: 4.9,
-    reviews: 128,
-    stock: 15,
-    description: "Powerful laptop with M3 chip for professional workflows",
-    features: ["M3 Pro Chip", "16GB RAM", "512GB SSD", "Liquid Retina Display"],
-  },
-  {
-    id: 2,
-    name: "Dell XPS Desktop",
-    brand: "Dell",
-    price: 1899,
-    originalPrice: 2199,
-    category: "desktops",
-    image: "/desktop.jpg?height=300&width=300",
-    rating: 4.7,
-    reviews: 89,
-    stock: 8,
-    description: "High-performance desktop for demanding applications",
-    features: ["Intel i7-13700", "32GB RAM", "1TB SSD", "RTX 4070"],
-  },
-  {
-    id: 3,
-    name: "Sony WH-1000XM5",
-    brand: "Sony",
-    price: 399,
-    originalPrice: 449,
-    category: "accessories",
-    image: "/headphone.jpg?height=300&width=300",
-    rating: 4.8,
-    reviews: 256,
-    stock: 25,
-    description: "Premium noise-canceling wireless headphones",
-    features: ["30hr Battery", "Noise Canceling", "Quick Charge", "Multipoint"],
-  },
-  {
-    id: 4,
-    name: "ThinkPad X1 Carbon",
-    brand: "Lenovo",
-    price: 1799,
-    originalPrice: 1999,
-    category: "laptops",
-    image: "/product.jpg?height=300&width=300",
-    rating: 4.6,
-    reviews: 167,
-    stock: 12,
-    description: "Ultra-lightweight business laptop with premium build",
-    features: ["Intel i7-1365U", "16GB RAM", "512GB SSD", '14" OLED'],
-  },
-  {
-    id: 5,
-    name: "HP EliteDesk 800",
-    brand: "HP",
-    price: 1299,
-    originalPrice: 1499,
-    category: "desktops",
-    image: "/eliteDesk.jpg?height=300&width=300",
-    rating: 4.5,
-    reviews: 94,
-    stock: 18,
-    description: "Compact business desktop with reliable performance",
-    features: ["Intel i5-13500", "16GB RAM", "512GB SSD", "Windows 11 Pro"],
-  },
-  {
-    id: 6,
-    name: "Logitech MX Master 3S",
-    brand: "Logitech",
-    price: 99,
-    originalPrice: 119,
-    category: "accessories",
-    image: "/MXmaster.jpg?height=300&width=300",
-    rating: 4.7,
-    reviews: 342,
-    stock: 45,
-    description: "Advanced wireless mouse for productivity",
-    features: ["8K DPI", "70-day Battery", "USB-C", "Multi-device"],
-  },
-]
+// 1) Interfaces
+
+// RawProductGroups = “category” → either an array of objects, or (for cabinets) an object whose values are objects.
+type RawProductGroups = Record<string, Array<Record<string, any>> | Record<string, any>>
+
+interface Product {
+  category: string
+  name: string
+  price: number
+
+  // Optional fields (only exist in some categories)
+  imageUrl?: string
+  brand?: string
+  originalPrice?: number
+  rating?: number
+  reviews?: number
+  stock?: number
+  description?: string
+  features?: string[]
+  // …and any other fields present in your JSON
+}
 
 export default function ProductsPage() {
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // UI state
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
@@ -111,25 +57,65 @@ export default function ProductsPage() {
   const { addItem } = useCart()
   const { toast } = useToast()
 
-  const brands = Array.from(new Set(products.map((p) => p.brand)))
-  const categories = Array.from(new Set(products.map((p) => p.category)))
+  // 2) Fetch & flatten
+  useEffect(() => {
+    setLoading(true)
+    fetchAllProducts()
+      .then((products) => {
+        setAllProducts(products)
+        setLoading(false)
+      })
+      .catch((err) => {
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [])
+  
 
-  const filteredProducts = products.filter((product) => {
+  // 3) Derive brand & category lists
+  const brands = Array.from(
+    new Set(
+      allProducts
+        .map((p) => p.brand)
+        .filter((b): b is string => typeof b === "string" && b.length > 0)
+    )
+  )
+  const categories = Array.from(new Set(allProducts.map((p) => p.category)))
+
+  // 4) Filtering logic
+  const filteredProducts = allProducts.filter((product) => {
     const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
-    const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand)
+      (product.name ?? ""
+      .toLowerCase()
+      .includes(searchTerm.trim().toLowerCase())) ||
+      (product.brand ?? "")
+        .toLowerCase()
+        .includes(searchTerm.trim().toLowerCase())
+
+    const matchesCategory =
+      selectedCategory === "all" || product.category === selectedCategory
+
+    const matchesBrand =
+      selectedBrands.length === 0 ||
+      (product.brand && selectedBrands.includes(product.brand))
 
     let matchesPrice = true
-    if (priceRange === "under-500") matchesPrice = product.price < 500
-    else if (priceRange === "500-1000") matchesPrice = product.price >= 500 && product.price < 1000
-    else if (priceRange === "1000-2000") matchesPrice = product.price >= 1000 && product.price < 2000
-    else if (priceRange === "over-2000") matchesPrice = product.price >= 2000
+    if (priceRange === "under-500") {
+      matchesPrice = product.price < 500
+    } else if (priceRange === "500-1000") {
+      matchesPrice = product.price >= 500 && product.price < 1000
+    } else if (priceRange === "1000-2000") {
+      matchesPrice = product.price >= 1000 && product.price < 2000
+    } else if (priceRange === "over-2000") {
+      matchesPrice = product.price >= 2000
+    }
 
-    return matchesSearch && matchesCategory && matchesBrand && matchesPrice
+    return (
+      matchesSearch && matchesCategory && matchesBrand && matchesPrice
+    )
   })
 
+  // 5) Sorting logic
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
       case "price-low":
@@ -137,24 +123,30 @@ export default function ProductsPage() {
       case "price-high":
         return b.price - a.price
       case "rating":
-        return b.rating - a.rating
+        return (b.rating ?? 0) - (a.rating ?? 0)
       case "name":
-        return a.name.localeCompare(b.name)
+        return (a.name ?? "").localeCompare(b.name ?? "")
       default:
         return 0
     }
   })
 
-  const toggleFavorite = (productId: number) => {
-    setFavorites((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]))
+  // 6) Favorite toggle
+  const toggleFavorite = (productIndex: number) => {
+    setFavorites((prev) =>
+      prev.includes(productIndex)
+        ? prev.filter((id) => id !== productIndex)
+        : [...prev, productIndex]
+    )
   }
 
-  const handleAddToCart = (product: (typeof products)[0]) => {
+  // 7) Add to cart
+  const handleAddToCart = (product: Product, index: number) => {
     addItem({
-      id: product.id,
+      id: index,
       name: product.name,
       price: product.price,
-      image: product.image,
+      image: product.imageUrl || "/placeholder.svg",
       quantity: 1,
     })
     toast({
@@ -163,23 +155,37 @@ export default function ProductsPage() {
     })
   }
 
-  const toggleBrand = (brand: string) => {
-    setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]))
+  // 8) Loading & error states
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg font-medium">Loading products…</p>
+      </div>
+    )
   }
-    const router = useRouter();
 
-  const handleClick = () => {
-    router.push('/product/id');
-  };
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-red-600 font-medium">
+          Failed to load products: {error}
+        </p>
+      </div>
+    )
+  }
 
-
+  // 9) Render
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">All Products</h1>
-          <p className="text-gray-600">Discover our complete range of office electronics</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            All Products
+          </h1>
+          <p className="text-gray-600">
+            Discover our complete range of electronics
+          </p>
         </div>
 
         <div className="grid lg:grid-cols-4 gap-8">
@@ -194,7 +200,9 @@ export default function ProductsPage() {
               <div className="space-y-6">
                 {/* Search */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Search</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Search
+                  </label>
                   <Input
                     placeholder="Search products..."
                     value={searchTerm}
@@ -204,16 +212,21 @@ export default function ProductsPage() {
 
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Category</label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <label className="block text-sm font-medium mb-2">
+                    Category
+                  </label>
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -222,14 +235,22 @@ export default function ProductsPage() {
 
                 {/* Brands */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Brands</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Brands
+                  </label>
                   <div className="space-y-2">
                     {brands.map((brand) => (
                       <div key={brand} className="flex items-center space-x-2">
                         <Checkbox
                           id={brand}
                           checked={selectedBrands.includes(brand)}
-                          onCheckedChange={() => toggleBrand(brand)}
+                          onCheckedChange={() => {
+                            setSelectedBrands((prev) =>
+                              prev.includes(brand)
+                                ? prev.filter((b) => b !== brand)
+                                : [...prev, brand]
+                            )
+                          }}
                         />
                         <label htmlFor={brand} className="text-sm">
                           {brand}
@@ -241,17 +262,22 @@ export default function ProductsPage() {
 
                 {/* Price Range */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Price Range</label>
-                  <Select value={priceRange} onValueChange={setPriceRange}>
+                  <label className="block text-sm font-medium mb-2">
+                    Price Range
+                  </label>
+                  <Select
+                    value={priceRange}
+                    onValueChange={setPriceRange}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Prices</SelectItem>
-                      <SelectItem value="under-500">Under $500</SelectItem>
-                      <SelectItem value="500-1000">$500 - $1,000</SelectItem>
-                      <SelectItem value="1000-2000">$1,000 - $2,000</SelectItem>
-                      <SelectItem value="over-2000">Over $2,000</SelectItem>
+                      <SelectItem value="under-500">Under ₹500</SelectItem>
+                      <SelectItem value="500-1000">₹500 – ₹1,000</SelectItem>
+                      <SelectItem value="1000-2000">₹1,000 – ₹2,000</SelectItem>
+                      <SelectItem value="over-2000">Over ₹2,000</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -264,7 +290,7 @@ export default function ProductsPage() {
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
               <p className="text-gray-600">
-                Showing {sortedProducts.length} of {products.length} products
+                Showing {sortedProducts.length} of {allProducts.length} products
               </p>
               <div className="flex items-center space-x-4">
                 <Select value={sortBy} onValueChange={setSortBy}>
@@ -273,10 +299,14 @@ export default function ProductsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="featured">Featured</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price-high">
+                      Price: High to Low
+                    </SelectItem>
                     <SelectItem value="rating">Highest Rated</SelectItem>
-                    <SelectItem value="name">Name A-Z</SelectItem>
+                    <SelectItem value="name">Name A–Z</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex border rounded-lg">
@@ -298,21 +328,41 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* Products */}
-            <div className={viewMode === "grid" ? "grid md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-4"}>
-              {sortedProducts.map((product) => (
+            {/* Products List / Grid */}
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid md:grid-cols-2 xl:grid-cols-3 gap-6"
+                  : "space-y-4"
+              }
+            >
+              {sortedProducts.map((product, idx) => (
                 <Card
-                  key={product.id}
-                  className={`group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden bg-white ${viewMode === "list" ? "flex" : ""}`}
+                  key={idx}
+                  className={`group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden bg-white ${
+                    viewMode === "list" ? "flex" : ""
+                  }`}
                 >
-                  <div className={`relative ${viewMode === "list" ? "w-48 flex-shrink-0" : ""}`}>
+                  <div
+                    className={`relative ${
+                      viewMode === "list" ? "w-48 flex-shrink-0" : ""
+                    }`}
+                  >
                     <img
-                      src={product.image || "/placeholder.svg"}
+                      src={product.imageUrl || "/placeholder.svg"}
                       alt={product.name}
-                      className={`object-cover group-hover:scale-105 transition-transform duration-300 ${viewMode === "list" ? "w-full h-full" : "w-full h-48"}`}
+                      className={`object-cover group-hover:scale-105 transition-transform duration-300 ${
+                        viewMode === "list" ? "w-full h-full" : "w-full h-48"
+                      }`}
                     />
                     <div className="absolute top-3 left-3">
-                      <Badge className="bg-red-500 text-white">Save ${product.originalPrice - product.price}</Badge>
+                      {product.originalPrice &&
+                        product.originalPrice > product.price && (
+                          <Badge className="bg-red-500 text-white">
+                            Save ₹
+                            {product.originalPrice - product.price}
+                          </Badge>
+                        )}
                     </div>
                     <Button
                       variant="ghost"
@@ -320,50 +370,88 @@ export default function ProductsPage() {
                       className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
                       onClick={(e) => {
                         e.preventDefault()
-                        toggleFavorite(product.id)
+                        toggleFavorite(idx)
                       }}
                     >
                       <Heart
-                        className={`h-4 w-4 ${favorites.includes(product.id) ? "fill-red-500 text-red-500" : "text-gray-600"}`}
+                        className={`h-4 w-4 ${
+                          favorites.includes(idx)
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }`}
                       />
                     </Button>
                   </div>
-                  <CardContent className={`p-6 ${viewMode === "list" ? "flex-1" : ""}`}>
+
+                  <CardContent
+                    className={`p-6 ${viewMode === "list" ? "flex-1" : ""}`}
+                  >
                     <div className="space-y-3">
                       <div>
-                        <p className="text-sm text-gray-500 font-medium">{product.brand}</p>
-                        <h3 onClick={handleClick} className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
+                        <p className="text-sm text-gray-500 font-medium">
+                          {product.brand || product.category}
+                        </p>
+                        <h3 className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
                           {product.name}
                         </h3>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm text-gray-600">({product.reviews})</span>
-                      </div>
+                      {product.rating !== undefined &&
+                        product.reviews !== undefined && (
+                          <div className="flex items-center space-x-2">
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < Math.floor(product.rating!)
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              ({product.reviews})
+                            </span>
+                          </div>
+                        )}
 
-                      <p className="text-sm text-gray-600">{product.description}</p>
+                      {product.description && (
+                        <p className="text-sm text-gray-600">
+                          {product.description}
+                        </p>
+                      )}
 
-                      <div className={`${viewMode === "list" ? "flex items-center justify-between" : "space-y-3"}`}>
+                      <div
+                        className={`${
+                          viewMode === "list"
+                            ? "flex items-center justify-between"
+                            : "space-y-3"
+                        }`}
+                      >
                         <div>
                           <div className="flex items-center space-x-2">
-                            <span className="text-2xl font-bold text-gray-900">${product.price}</span>
-                            <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                            <span className="text-2xl font-bold text-gray-900">
+                              ₹{product.price}
+                            </span>
+                            {product.originalPrice && (
+                              <span className="text-sm text-gray-500 line-through">
+                                ₹{product.originalPrice}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-xs text-green-600 font-medium">{product.stock} in stock</p>
+                          {product.stock !== undefined && (
+                            <p className="text-xs text-green-600 font-medium">
+                              {product.stock} in stock
+                            </p>
+                          )}
                         </div>
                         <Button
                           className="bg-orange-500 hover:bg-orange-600 text-white"
                           onClick={(e) => {
                             e.preventDefault()
-                            handleAddToCart(product)
+                            handleAddToCart(product, idx)
                           }}
                         >
                           <ShoppingCart className="h-4 w-4 mr-2" />
@@ -378,7 +466,9 @@ export default function ProductsPage() {
 
             {sortedProducts.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No products found matching your criteria.</p>
+                <p className="text-gray-500 text-lg">
+                  No products found matching your criteria.
+                </p>
                 <Button
                   variant="outline"
                   className="mt-4"

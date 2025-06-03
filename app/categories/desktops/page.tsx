@@ -1,132 +1,92 @@
+// app/categories/desktops/page.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Star, Heart, ShoppingCart, Filter, Monitor } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
-
-const desktops = [
-  {
-    id: 2,
-    name: "Dell XPS Desktop",
-    brand: "Dell",
-    price: 1899,
-    originalPrice: 2199,
-    image: "/desktop.jpg?height=300&width=300",
-    rating: 4.7,
-    reviews: 89,
-    stock: 8,
-    description: "High-performance desktop for demanding applications",
-    specs: ["Intel i7-13700", "32GB RAM", "1TB SSD", "RTX 4070"],
-    category: "Gaming",
-  },
-  {
-    id: 5,
-    name: "HP EliteDesk 800",
-    brand: "HP",
-    price: 1299,
-    originalPrice: 1499,
-    image: "/eliteDesk.jpg?height=300&width=300",
-    rating: 4.5,
-    reviews: 94,
-    stock: 18,
-    description: "Compact business desktop with reliable performance",
-    specs: ["Intel i5-13500", "16GB RAM", "512GB SSD", "Windows 11 Pro"],
-    category: "Business",
-  },
-  {
-    id: 11,
-    name: "iMac 24-inch M3",
-    brand: "Apple",
-    price: 1699,
-    originalPrice: 1899,
-    image: "/Imac.jpg?height=300&width=300",
-    rating: 4.8,
-    reviews: 156,
-    stock: 12,
-    description: "All-in-one desktop with stunning display",
-    specs: ["M3 Chip", "16GB RAM", "512GB SSD", "24-inch 4.5K Display"],
-    category: "All-in-One",
-  },
-  {
-    id: 12,
-    name: "ASUS ROG Strix GT35",
-    brand: "ASUS",
-    price: 2499,
-    originalPrice: 2799,
-    image: "/Asus-desktop.jpg?height=300&width=300",
-    rating: 4.6,
-    reviews: 78,
-    stock: 6,
-    description: "Ultimate gaming desktop with RGB lighting",
-    specs: ["Intel i9-13900K", "32GB DDR5", "2TB SSD", "RTX 4080"],
-    category: "Gaming",
-  },
-  {
-    id: 13,
-    name: "Lenovo ThinkCentre M90q",
-    brand: "Lenovo",
-    price: 899,
-    originalPrice: 1099,
-    image: "/eliteDesk.jpg?height=300&width=300",
-    rating: 4.4,
-    reviews: 112,
-    stock: 25,
-    description: "Tiny desktop with big performance",
-    specs: ["Intel i5-13500T", "16GB RAM", "512GB SSD", "Ultra Compact"],
-    category: "Mini PC",
-  },
-  {
-    id: 14,
-    name: "Custom Workstation Pro",
-    brand: "Custom Build",
-    price: 3299,
-    originalPrice: 3699,
-    image: "/desktop.jpg?height=300&width=300",
-    rating: 4.9,
-    reviews: 45,
-    stock: 4,
-    description: "Professional workstation for content creation",
-    specs: ["Intel Xeon W", "64GB ECC RAM", "4TB NVMe", "RTX A4000"],
-    category: "Workstation",
-  },
-]
+import { fetchDesktops, Product } from "@/services/productService"
 
 export default function DesktopsPage() {
+  // 1) fetched data + loading/error state
+  const [desktops, setDesktops] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // 2) UI filtering/sorting state
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("all")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [priceRange, setPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("featured")
-  const [favorites, setFavorites] = useState<number[]>([])
+  const [favorites, setFavorites] = useState<string[]>([]) // uniqueKey strings for favorites
 
   const { addItem } = useCart()
   const { toast } = useToast()
 
-  const brands = Array.from(new Set(desktops.map((p) => p.brand)))
-  const categories = Array.from(new Set(desktops.map((p) => p.category)))
+  // 3) फ़ेच करते हैं “desktops” category के products
+  useEffect(() => {
+    setLoading(true)
+    fetchDesktops()
+      .then((data) => {
+        setDesktops(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Error fetching desktops:", err)
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [])
 
+  // 4) derive brands and sub‐categories (fine‐grained categories within “desktops”)
+  const brands = Array.from(
+    new Set(desktops.map((p) => p.brand).filter((b): b is string => !!b))
+  )
+  const categories = Array.from(
+    new Set(desktops.map((p) => p.category).filter((c): c is string => !!c))
+  )
+
+  // 5) apply filters: search, brand, category, price‐range
   const filteredDesktops = desktops.filter((desktop) => {
+    const nameLower = (desktop.name ?? "").toLowerCase()
+    const brandLower = (desktop.brand ?? "").toLowerCase()
     const matchesSearch =
-      desktop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      desktop.brand.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesBrand = selectedBrand === "all" || desktop.brand === selectedBrand
-    const matchesCategory = selectedCategory === "all" || desktop.category === selectedCategory
+      nameLower.includes(searchTerm.toLowerCase()) ||
+      brandLower.includes(searchTerm.toLowerCase())
+    const matchesBrand =
+      selectedBrand === "all" || desktop.brand === selectedBrand
+    const matchesCategory =
+      selectedCategory === "all" || desktop.category === selectedCategory
 
     let matchesPrice = true
-    if (priceRange === "under-1000") matchesPrice = desktop.price < 1000
-    else if (priceRange === "1000-2000") matchesPrice = desktop.price >= 1000 && desktop.price < 2000
-    else if (priceRange === "2000-3000") matchesPrice = desktop.price >= 2000 && desktop.price < 3000
-    else if (priceRange === "over-3000") matchesPrice = desktop.price >= 3000
+    if (priceRange === "under-1000") {
+      matchesPrice = desktop.price < 1000
+    } else if (priceRange === "1000-2000") {
+      matchesPrice = desktop.price >= 1000 && desktop.price < 2000
+    } else if (priceRange === "2000-3000") {
+      matchesPrice = desktop.price >= 2000 && desktop.price < 3000
+    } else if (priceRange === "over-3000") {
+      matchesPrice = desktop.price >= 3000
+    }
 
-    return matchesSearch && matchesBrand && matchesCategory && matchesPrice
+    return (
+      matchesSearch && matchesBrand && matchesCategory && matchesPrice
+    )
   })
 
+  // 6) sorting logic
   const sortedDesktops = [...filteredDesktops].sort((a, b) => {
     switch (sortBy) {
       case "price-low":
@@ -134,24 +94,30 @@ export default function DesktopsPage() {
       case "price-high":
         return b.price - a.price
       case "rating":
-        return b.rating - a.rating
+        return (b.rating ?? 0) - (a.rating ?? 0)
       case "name":
-        return a.name.localeCompare(b.name)
+        return (a.name ?? "").localeCompare(b.name ?? "")
       default:
         return 0
     }
   })
 
-  const toggleFavorite = (desktopId: number) => {
-    setFavorites((prev) => (prev.includes(desktopId) ? prev.filter((id) => id !== desktopId) : [...prev, desktopId]))
+  // 7) toggle favorite by uniqueKey (e.g. `${category}-${name}`)
+  const toggleFavorite = (uniqueKey: string) => {
+    setFavorites((prev) =>
+      prev.includes(uniqueKey)
+        ? prev.filter((k) => k !== uniqueKey)
+        : [...prev, uniqueKey]
+    )
   }
 
-  const handleAddToCart = (desktop: (typeof desktops)[0]) => {
+  // 8) add to cart, using numeric index as ID
+  const handleAddToCart = (desktop: Product, idx: number) => {
     addItem({
-      id: desktop.id,
-      name: desktop.name,
+      id: idx, // numeric ID
+      name: desktop.name!,
       price: desktop.price,
-      image: desktop.image,
+      image: desktop.imageUrl || "/placeholder.svg",
       quantity: 1,
     })
     toast({
@@ -160,6 +126,24 @@ export default function DesktopsPage() {
     })
   }
 
+  // 9) loading / error views
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg font-medium">Loading desktops…</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-red-600 font-medium">Error: {error}</p>
+      </div>
+    )
+  }
+
+  // 10) Main JSX
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -205,12 +189,14 @@ export default function DesktopsPage() {
           </div>
 
           <div className="grid md:grid-cols-5 gap-4">
+            {/* Search */}
             <Input
               placeholder="Search desktops..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
+            {/* Brand */}
             <Select value={selectedBrand} onValueChange={setSelectedBrand}>
               <SelectTrigger>
                 <SelectValue placeholder="Brand" />
@@ -225,20 +211,22 @@ export default function DesktopsPage() {
               </SelectContent>
             </Select>
 
+            {/* Sub‐Category */}
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Price Range */}
             <Select value={priceRange} onValueChange={setPriceRange}>
               <SelectTrigger>
                 <SelectValue placeholder="Price Range" />
@@ -252,6 +240,7 @@ export default function DesktopsPage() {
               </SelectContent>
             </Select>
 
+            {/* Sort By */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
                 <SelectValue placeholder="Sort By" />
@@ -267,54 +256,66 @@ export default function DesktopsPage() {
           </div>
         </Card>
 
-        {/* Results */}
+        {/* Results Header */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-gray-600">
             Showing {sortedDesktops.length} of {desktops.length} desktops
           </p>
         </div>
 
-        {/* Products Grid */}
+        {/* Grid of Desktops */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedDesktops.map((desktop) => (
-            <Card
-              key={desktop.id}
-              className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-white"
-            >
-              <div className="relative">
-                <img
-                  src={desktop.image || "/placeholder.svg"}
-                  alt={desktop.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3">
-                  <Badge className="bg-red-500 text-white">Save ${desktop.originalPrice - desktop.price}</Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    toggleFavorite(desktop.id)
-                  }}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${favorites.includes(desktop.id) ? "fill-red-500 text-red-500" : "text-gray-600"}`}
-                  />
-                </Button>
-              </div>
+          {sortedDesktops.map((desktop, idx) => {
+            const uniqueKey = `${desktop.category}-${desktop.name}`
 
-              <CardContent className="p-6">
-                <div className="space-y-3">
+            return (
+              <Card
+                key={idx}
+                className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-white"
+              >
+                <div className="relative">
+                  <img
+                    src={desktop.imageUrl || "/placeholder.svg"}
+                    alt={desktop.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {desktop.originalPrice && desktop.originalPrice > desktop.price && (
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-red-500 text-white">
+                        Save ${desktop.originalPrice - desktop.price}
+                      </Badge>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleFavorite(uniqueKey)
+                    }}
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${
+                        favorites.includes(uniqueKey)
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
+                      }`}
+                    />
+                  </Button>
+                </div>
+
+                <CardContent className="p-6 space-y-3">
                   <div>
                     <p className="text-sm text-gray-500 font-medium">{desktop.brand}</p>
                     <h3 className="font-bold text-gray-900 group-hover:text-green-600 transition-colors">
                       {desktop.name}
                     </h3>
-                    <Badge variant="outline" className="mt-1">
-                      {desktop.category}
-                    </Badge>
+                    {desktop.category && (
+                      <Badge variant="outline" className="mt-1">
+                        {desktop.category}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -322,32 +323,46 @@ export default function DesktopsPage() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-4 w-4 ${i < Math.floor(desktop.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                          className={`h-4 w-4 ${
+                            i < Math.floor(desktop.rating ?? 0)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                          }`}
                         />
                       ))}
                     </div>
-                    <span className="text-sm text-gray-600">({desktop.reviews})</span>
+                    <span className="text-sm text-gray-600">({desktop.reviews ?? 0})</span>
                   </div>
 
-                  <p className="text-sm text-gray-600">{desktop.description}</p>
+                  {desktop.description && (
+                    <p className="text-sm text-gray-600">{desktop.description}</p>
+                  )}
 
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1">
-                      {desktop.specs.slice(0, 2).map((spec, idx) => (
-                        <span key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                          {spec}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="flex flex-wrap gap-1">
+                    {desktop.specs?.slice(0, 2).map((spec, sidx) => (
+                      <span key={sidx} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {spec}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-2xl font-bold text-gray-900">${desktop.price}</span>
-                        <span className="text-sm text-gray-500 line-through">${desktop.originalPrice}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          ${desktop.price}
+                        </span>
+                        {desktop.originalPrice && (
+                          <span className="text-sm text-gray-500 line-through">
+                            ${desktop.originalPrice}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-green-600 font-medium">{desktop.stock} in stock</p>
+                      {desktop.stock !== undefined && (
+                        <p className="text-xs text-green-600 font-medium">
+                          {desktop.stock} in stock
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -355,16 +370,16 @@ export default function DesktopsPage() {
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                     onClick={(e) => {
                       e.preventDefault()
-                      handleAddToCart(desktop)
+                      handleAddToCart(desktop, idx)
                     }}
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     Add to Cart
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
         {sortedDesktops.length === 0 && (

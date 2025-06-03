@@ -1,160 +1,95 @@
+// app/categories/accessories/page.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Star, Heart, ShoppingCart, Filter, Headphones } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
-
-const accessories = [
-  {
-    id: 3,
-    name: "Sony WH-1000XM5",
-    brand: "Sony",
-    price: 399,
-    originalPrice: 449,
-    image: "/headphone.jpg?height=300&width=300",
-    rating: 4.8,
-    reviews: 256,
-    stock: 25,
-    description: "Premium noise-canceling wireless headphones",
-    specs: ["30hr Battery", "Noise Canceling", "Quick Charge", "Multipoint"],
-    category: "Audio",
-  },
-  {
-    id: 6,
-    name: "Logitech MX Master 3S",
-    brand: "Logitech",
-    price: 99,
-    originalPrice: 119,
-    image: "/MXmaster.jpg?height=300&width=300",
-    rating: 4.7,
-    reviews: 342,
-    stock: 45,
-    description: "Advanced wireless mouse for productivity",
-    specs: ["8K DPI", "70-day Battery", "USB-C", "Multi-device"],
-    category: "Input Devices",
-  },
-  {
-    id: 15,
-    name: "Dell UltraSharp 27 4K",
-    brand: "Dell",
-    price: 599,
-    originalPrice: 699,
-    image: "/dell.jpg?height=300&width=300",
-    rating: 4.6,
-    reviews: 189,
-    stock: 18,
-    description: "Professional 4K monitor with accurate colors",
-    specs: ["27-inch 4K", "IPS Panel", "USB-C Hub", "Height Adjustable"],
-    category: "Monitors",
-  },
-  {
-    id: 16,
-    name: "Keychron K8 Wireless",
-    brand: "Keychron",
-    price: 89,
-    originalPrice: 109,
-    image: "/keyboard.jpg?height=300&width=300",
-    rating: 4.5,
-    reviews: 278,
-    stock: 32,
-    description: "Mechanical keyboard with hot-swappable switches",
-    specs: ["Mechanical", "Wireless", "Hot-swap", "RGB Backlight"],
-    category: "Input Devices",
-  },
-  {
-    id: 17,
-    name: "Anker PowerConf C300",
-    brand: "Anker",
-    price: 129,
-    originalPrice: 159,
-    image: "/MXmaster.jpg?height=300&width=300",
-    rating: 4.4,
-    reviews: 156,
-    stock: 28,
-    description: "AI-powered webcam for video conferencing",
-    specs: ["1080p 60fps", "AI Auto-framing", "Noise Reduction", "Privacy Shutter"],
-    category: "Video",
-  },
-  {
-    id: 18,
-    name: "CalDigit TS4 Thunderbolt 4",
-    brand: "CalDigit",
-    price: 379,
-    originalPrice: 429,
-    image: "/headphone.jpg?height=300&width=300",
-    rating: 4.7,
-    reviews: 94,
-    stock: 15,
-    description: "Ultimate Thunderbolt 4 docking station",
-    specs: ["18 Ports", "98W Charging", "8K Display", "Thunderbolt 4"],
-    category: "Docking Stations",
-  },
-  {
-    id: 19,
-    name: "Herman Miller Sayl Chair",
-    brand: "Herman Miller",
-    price: 295,
-    originalPrice: 345,
-    image: "/dell.jpg?height=300&width=300",
-    rating: 4.3,
-    reviews: 67,
-    stock: 12,
-    description: "Ergonomic office chair with suspension back",
-    specs: ["Ergonomic", "Suspension Back", "Adjustable Arms", "12-year Warranty"],
-    category: "Furniture",
-  },
-  {
-    id: 20,
-    name: "Elgato Stream Deck MK.2",
-    brand: "Elgato",
-    price: 149,
-    originalPrice: 179,
-    image: "/keyboard.jpg?height=300&width=300",
-    rating: 4.8,
-    reviews: 203,
-    stock: 22,
-    description: "Customizable control deck for content creators",
-    specs: ["15 LCD Keys", "Customizable", "Plugin Support", "USB-C"],
-    category: "Content Creation",
-  },
-]
+import { fetchAccessories, Product } from "@/services/productService"
 
 export default function AccessoriesPage() {
+  // 1) fetched accessories + loading/error state
+  const [accessories, setAccessories] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // 2) UI filtering/sorting state
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("all")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [priceRange, setPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("featured")
-  const [favorites, setFavorites] = useState<number[]>([])
+  const [favorites, setFavorites] = useState<string[]>([]) // uniqueKey strings
 
   const { addItem } = useCart()
   const { toast } = useToast()
 
-  const brands = Array.from(new Set(accessories.map((p) => p.brand)))
-  const categories = Array.from(new Set(accessories.map((p) => p.category)))
+  // 3) फ़ेच करते हैं उन प्रोडक्ट्स को जो accessories हों (laptops/desktops नहीं)
+  useEffect(() => {
+    setLoading(true)
+    fetchAccessories()
+      .then((data) => {
+        setAccessories(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Error fetching accessories:", err)
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [])
 
+  // 4) derive unique brands और sub-categories
+  const brands = Array.from(
+    new Set(accessories.map((p) => p.brand).filter((b): b is string => !!b))
+  )
+  const categories = Array.from(
+    new Set(accessories.map((p) => p.category).filter((c): c is string => !!c))
+  )
+
+  // 5) apply filters: search, brand, category, price
   const filteredAccessories = accessories.filter((accessory) => {
+    const nameLower = (accessory.name ?? "").toLowerCase()
+    const brandLower = (accessory.brand ?? "").toLowerCase()
     const matchesSearch =
-      accessory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      accessory.brand.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesBrand = selectedBrand === "all" || accessory.brand === selectedBrand
-    const matchesCategory = selectedCategory === "all" || accessory.category === selectedCategory
+      nameLower.includes(searchTerm.toLowerCase()) ||
+      brandLower.includes(searchTerm.toLowerCase())
+    const matchesBrand =
+      selectedBrand === "all" || accessory.brand === selectedBrand
+    const matchesCategory =
+      selectedCategory === "all" || accessory.category === selectedCategory
 
     let matchesPrice = true
-    if (priceRange === "under-100") matchesPrice = accessory.price < 100
-    else if (priceRange === "100-200") matchesPrice = accessory.price >= 100 && accessory.price < 200
-    else if (priceRange === "200-400") matchesPrice = accessory.price >= 200 && accessory.price < 400
-    else if (priceRange === "over-400") matchesPrice = accessory.price >= 400
+    if (priceRange === "under-100") {
+      matchesPrice = accessory.price < 100
+    } else if (priceRange === "100-200") {
+      matchesPrice = accessory.price >= 100 && accessory.price < 200
+    } else if (priceRange === "200-400") {
+      matchesPrice = accessory.price >= 200 && accessory.price < 400
+    } else if (priceRange === "over-400") {
+      matchesPrice = accessory.price >= 400
+    }
 
-    return matchesSearch && matchesBrand && matchesCategory && matchesPrice
+    return (
+      matchesSearch &&
+      matchesBrand &&
+      matchesCategory &&
+      matchesPrice
+    )
   })
 
+  // 6) sorting logic
   const sortedAccessories = [...filteredAccessories].sort((a, b) => {
     switch (sortBy) {
       case "price-low":
@@ -162,26 +97,30 @@ export default function AccessoriesPage() {
       case "price-high":
         return b.price - a.price
       case "rating":
-        return b.rating - a.rating
+        return (b.rating ?? 0) - (a.rating ?? 0)
       case "name":
-        return a.name.localeCompare(b.name)
+        return (a.name ?? "").localeCompare(b.name ?? "")
       default:
         return 0
     }
   })
 
-  const toggleFavorite = (accessoryId: number) => {
+  // 7) toggle favorite by uniqueKey (e.g. `${category}-${name}`)
+  const toggleFavorite = (uniqueKey: string) => {
     setFavorites((prev) =>
-      prev.includes(accessoryId) ? prev.filter((id) => id !== accessoryId) : [...prev, accessoryId],
+      prev.includes(uniqueKey)
+        ? prev.filter((k) => k !== uniqueKey)
+        : [...prev, uniqueKey]
     )
   }
 
-  const handleAddToCart = (accessory: (typeof accessories)[0]) => {
+  // 8) add to cart with numeric index as ID
+  const handleAddToCart = (accessory: Product, idx: number) => {
     addItem({
-      id: accessory.id,
-      name: accessory.name,
+      id: idx, // numeric ID
+      name: accessory.name!,
       price: accessory.price,
-      image: accessory.image,
+      image: accessory.imageUrl || "/placeholder.svg",
       quantity: 1,
     })
     toast({
@@ -190,6 +129,24 @@ export default function AccessoriesPage() {
     })
   }
 
+  // 9) loading / error views
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg font-medium">Loading accessories…</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-red-600 font-medium">Error: {error}</p>
+      </div>
+    )
+  }
+
+  // 10) Main JSX
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -199,10 +156,12 @@ export default function AccessoriesPage() {
             <div className="inline-flex items-center justify-center p-3 bg-white/20 rounded-full mb-6">
               <Headphones className="h-8 w-8" />
             </div>
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6">Premium Accessories</h1>
+            <h1 className="text-4xl lg:text-6xl font-bold mb-6">
+              Premium Accessories
+            </h1>
             <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
-              Complete your workspace with our carefully curated selection of premium accessories designed to enhance
-              your productivity and comfort.
+              Complete your workspace with our curated selection of accessories designed
+              to enhance productivity and comfort.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               <div>
@@ -235,12 +194,14 @@ export default function AccessoriesPage() {
           </div>
 
           <div className="grid md:grid-cols-5 gap-4">
+            {/* Search */}
             <Input
               placeholder="Search accessories..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
+            {/* Brand */}
             <Select value={selectedBrand} onValueChange={setSelectedBrand}>
               <SelectTrigger>
                 <SelectValue placeholder="Brand" />
@@ -255,20 +216,25 @@ export default function AccessoriesPage() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            {/* Sub-Category */}
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Price Range */}
             <Select value={priceRange} onValueChange={setPriceRange}>
               <SelectTrigger>
                 <SelectValue placeholder="Price Range" />
@@ -282,14 +248,19 @@ export default function AccessoriesPage() {
               </SelectContent>
             </Select>
 
+            {/* Sort By */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
                 <SelectValue placeholder="Sort By" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="featured">Featured</SelectItem>
-                <SelectItem value="price-low">Price: Low to High</SelectItem>
-                <SelectItem value="price-high">Price: High to Low</SelectItem>
+                <SelectItem value="price-low">
+                  Price: Low to High
+                </SelectItem>
+                <SelectItem value="price-high">
+                  Price: High to Low
+                </SelectItem>
                 <SelectItem value="rating">Highest Rated</SelectItem>
                 <SelectItem value="name">Name A-Z</SelectItem>
               </SelectContent>
@@ -297,48 +268,61 @@ export default function AccessoriesPage() {
           </div>
         </Card>
 
-        {/* Results */}
+        {/* Results Header */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-gray-600">
             Showing {sortedAccessories.length} of {accessories.length} accessories
           </p>
         </div>
 
-        {/* Products Grid */}
+        {/* Grid of Accessories */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {sortedAccessories.map((accessory) => (
-            <Card
-              key={accessory.id}
-              className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-white"
-            >
-              <div className="relative">
-                <img
-                  src={accessory.image || "/placeholder.svg"}
-                  alt={accessory.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3">
-                  <Badge className="bg-red-500 text-white">Save ${accessory.originalPrice - accessory.price}</Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    toggleFavorite(accessory.id)
-                  }}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${favorites.includes(accessory.id) ? "fill-red-500 text-red-500" : "text-gray-600"}`}
-                  />
-                </Button>
-              </div>
+          {sortedAccessories.map((accessory, idx) => {
+            const uniqueKey = `${accessory.category}-${accessory.name}`
 
-              <CardContent className="p-6">
-                <div className="space-y-3">
+            return (
+              <Card
+                key={idx}
+                className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-white"
+              >
+                <div className="relative">
+                  <img
+                    src={accessory.imageUrl || "/placeholder.svg"}
+                    alt={accessory.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {accessory.originalPrice &&
+                    accessory.originalPrice > accessory.price && (
+                      <div className="absolute top-3 left-3">
+                        <Badge className="bg-red-500 text-white">
+                          Save ${accessory.originalPrice - accessory.price}
+                        </Badge>
+                      </div>
+                    )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleFavorite(uniqueKey)
+                    }}
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${
+                        favorites.includes(uniqueKey)
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
+                      }`}
+                    />
+                  </Button>
+                </div>
+
+                <CardContent className="p-6 space-y-3">
                   <div>
-                    <p className="text-sm text-gray-500 font-medium">{accessory.brand}</p>
+                    <p className="text-sm text-gray-500 font-medium">
+                      {accessory.brand}
+                    </p>
                     <h3 className="font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
                       {accessory.name}
                     </h3>
@@ -352,32 +336,53 @@ export default function AccessoriesPage() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-4 w-4 ${i < Math.floor(accessory.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                          className={`h-4 w-4 ${
+                            i < Math.floor(accessory.rating ?? 0)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                          }`}
                         />
                       ))}
                     </div>
-                    <span className="text-sm text-gray-600">({accessory.reviews})</span>
+                    <span className="text-sm text-gray-600">
+                      ({accessory.reviews ?? 0})
+                    </span>
                   </div>
 
-                  <p className="text-sm text-gray-600">{accessory.description}</p>
+                  {accessory.description && (
+                    <p className="text-sm text-gray-600">
+                      {accessory.description}
+                    </p>
+                  )}
 
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1">
-                      {accessory.specs.slice(0, 2).map((spec, idx) => (
-                        <span key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                          {spec}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="flex flex-wrap gap-1">
+                    {accessory.specs?.slice(0, 2).map((spec, sidx) => (
+                      <span
+                        key={sidx}
+                        className="text-xs bg-gray-100 px-2 py-1 rounded"
+                      >
+                        {spec}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-2xl font-bold text-gray-900">${accessory.price}</span>
-                        <span className="text-sm text-gray-500 line-through">${accessory.originalPrice}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          ${accessory.price}
+                        </span>
+                        {accessory.originalPrice && (
+                          <span className="text-sm text-gray-500 line-through">
+                            ${accessory.originalPrice}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-green-600 font-medium">{accessory.stock} in stock</p>
+                      {accessory.stock !== undefined && (
+                        <p className="text-xs text-green-600 font-medium">
+                          {accessory.stock} in stock
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -385,21 +390,23 @@ export default function AccessoriesPage() {
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                     onClick={(e) => {
                       e.preventDefault()
-                      handleAddToCart(accessory)
+                      handleAddToCart(accessory, idx)
                     }}
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     Add to Cart
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
         {sortedAccessories.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No accessories found matching your criteria.</p>
+            <p className="text-gray-500 text-lg">
+              No accessories found matching your criteria.
+            </p>
             <Button
               variant="outline"
               className="mt-4"

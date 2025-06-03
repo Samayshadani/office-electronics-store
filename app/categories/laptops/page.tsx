@@ -1,132 +1,90 @@
+// app/categories/laptops/page.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Star, Heart, ShoppingCart, Filter, Laptop } from "lucide-react"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
-
-const laptops = [
-  {
-    id: 1,
-    name: "MacBook Pro 16-inch M3",
-    brand: "Apple",
-    price: 2499,
-    originalPrice: 2799,
-    image: "/Macbook.jpg?height=300&width=300",
-    rating: 4.9,
-    reviews: 128,
-    stock: 15,
-    description: "Powerful laptop with M3 chip for professional workflows",
-    specs: ["M3 Pro Chip", "16GB RAM", "512GB SSD", "16.2-inch Display"],
-    category: "Professional",
-  },
-  {
-    id: 4,
-    name: "ThinkPad X1 Carbon",
-    brand: "Lenovo",
-    price: 1799,
-    originalPrice: 1999,
-    image: "/product.jpg?height=300&width=300",
-    rating: 4.6,
-    reviews: 167,
-    stock: 12,
-    description: "Ultra-lightweight business laptop with premium build",
-    specs: ["Intel i7-1365U", "16GB RAM", "512GB SSD", '14" OLED'],
-    category: "Business",
-  },
-  {
-    id: 7,
-    name: "Surface Laptop Studio",
-    brand: "Microsoft",
-    price: 1599,
-    originalPrice: 1799,
-    image: "/surface.jpg?height=300&width=300",
-    rating: 4.5,
-    reviews: 72,
-    stock: 8,
-    description: "Versatile laptop with unique hinge design",
-    specs: ["Intel i7-11370H", "16GB RAM", "512GB SSD", "14.4-inch Touch"],
-    category: "Creative",
-  },
-  {
-    id: 8,
-    name: "MacBook Air M3",
-    brand: "Apple",
-    price: 1299,
-    originalPrice: 1499,
-    image: "/product.jpg?height=300&width=300",
-    rating: 4.8,
-    reviews: 183,
-    stock: 20,
-    description: "Lightweight and powerful for everyday tasks",
-    specs: ["M3 Chip", "8GB RAM", "256GB SSD", "13.6-inch Display"],
-    category: "Everyday",
-  },
-  {
-    id: 9,
-    name: "Dell XPS 13 Plus",
-    brand: "Dell",
-    price: 1399,
-    originalPrice: 1599,
-    image: "/surface.jpg?height=300&width=300",
-    rating: 4.4,
-    reviews: 95,
-    stock: 14,
-    description: "Premium ultrabook with stunning display",
-    specs: ["Intel i7-1360P", "16GB RAM", "512GB SSD", "13.4-inch OLED"],
-    category: "Premium",
-  },
-  {
-    id: 10,
-    name: "ASUS ROG Zephyrus G14",
-    brand: "ASUS",
-    price: 1899,
-    originalPrice: 2199,
-    image: "/ASUS.jpg?height=300&width=300",
-    rating: 4.7,
-    reviews: 156,
-    stock: 9,
-    description: "Gaming laptop with excellent performance",
-    specs: ["AMD Ryzen 9", "32GB RAM", "1TB SSD", "RTX 4070"],
-    category: "Gaming",
-  },
-]
+import { fetchLaptops, Product } from "@/services/productService"
 
 export default function LaptopsPage() {
+  // 1) Local state for fetched laptops + loading/error
+  const [laptops, setLaptops] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // 2) UI state (search/filter/sort)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("all")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [priceRange, setPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("featured")
-  const [favorites, setFavorites] = useState<number[]>([])
+  const [favorites, setFavorites] = useState<string[]>([]) // use name‐based favorites or some unique key
 
   const { addItem } = useCart()
   const { toast } = useToast()
 
-  const brands = Array.from(new Set(laptops.map((p) => p.brand)))
-  const categories = Array.from(new Set(laptops.map((p) => p.category)))
+  // 3) On mount, fetch laptops
+  useEffect(() => {
+    setLoading(true)
+    fetchLaptops()
+      .then((data) => {
+        setLaptops(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Error fetching laptops:", err)
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [])
 
+  // 4) Derive brand‐list and category‐list from fetched data
+  const brands = Array.from(
+    new Set(laptops.map((p) => p.brand).filter((b): b is string => !!b))
+  )
+  const categories = Array.from(
+    new Set(laptops.map((p) => p.category).filter((c): c is string => !!c))
+  )
+
+  // 5) Filter laptops based on search/brand/category/price
   const filteredLaptops = laptops.filter((laptop) => {
+    const nameLower = (laptop.name ?? "").toLowerCase()
+    const brandLower = (laptop.brand ?? "").toLowerCase()
     const matchesSearch =
-      laptop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      laptop.brand.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesBrand = selectedBrand === "all" || laptop.brand === selectedBrand
-    const matchesCategory = selectedCategory === "all" || laptop.category === selectedCategory
+      nameLower.includes(searchTerm.toLowerCase()) ||
+      brandLower.includes(searchTerm.toLowerCase())
+    const matchesBrand =
+      selectedBrand === "all" || laptop.brand === selectedBrand
+    const matchesCategory =
+      selectedCategory === "all" || laptop.category === selectedCategory
 
     let matchesPrice = true
-    if (priceRange === "under-1000") matchesPrice = laptop.price < 1000
-    else if (priceRange === "1000-1500") matchesPrice = laptop.price >= 1000 && laptop.price < 1500
-    else if (priceRange === "1500-2000") matchesPrice = laptop.price >= 1500 && laptop.price < 2000
-    else if (priceRange === "over-2000") matchesPrice = laptop.price >= 2000
+    if (priceRange === "under-1000") {
+      matchesPrice = laptop.price < 1000
+    } else if (priceRange === "1000-1500") {
+      matchesPrice = laptop.price >= 1000 && laptop.price < 1500
+    } else if (priceRange === "1500-2000") {
+      matchesPrice = laptop.price >= 1500 && laptop.price < 2000
+    } else if (priceRange === "over-2000") {
+      matchesPrice = laptop.price >= 2000
+    }
 
     return matchesSearch && matchesBrand && matchesCategory && matchesPrice
   })
 
+  // 6) Sort
   const sortedLaptops = [...filteredLaptops].sort((a, b) => {
     switch (sortBy) {
       case "price-low":
@@ -134,24 +92,30 @@ export default function LaptopsPage() {
       case "price-high":
         return b.price - a.price
       case "rating":
-        return b.rating - a.rating
+        return (b.rating ?? 0) - (a.rating ?? 0)
       case "name":
-        return a.name.localeCompare(b.name)
+        return (a.name ?? "").localeCompare(b.name ?? "")
       default:
         return 0
     }
   })
 
-  const toggleFavorite = (laptopId: number) => {
-    setFavorites((prev) => (prev.includes(laptopId) ? prev.filter((id) => id !== laptopId) : [...prev, laptopId]))
+  // 7) Toggle favorite by using a unique key (e.g. name+price or name alone)
+  const toggleFavorite = (uniqueKey: string) => {
+    setFavorites((prev) =>
+      prev.includes(uniqueKey)
+        ? prev.filter((k) => k !== uniqueKey)
+        : [...prev, uniqueKey]
+    )
   }
 
-  const handleAddToCart = (laptop: (typeof laptops)[0]) => {
+  // 8) Add to cart
+  const handleAddToCart = (laptop: Product, numericId: number) => {
     addItem({
-      id: laptop.id,
-      name: laptop.name,
+      id: numericId, // or any unique string
+      name: laptop.name!,
       price: laptop.price,
-      image: laptop.image,
+      image: laptop.imageUrl || "/placeholder.svg",
       quantity: 1,
     })
     toast({
@@ -160,6 +124,24 @@ export default function LaptopsPage() {
     })
   }
 
+  // 9) Show loading / error if needed
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg font-medium">Loading laptops…</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-red-600 font-medium">Error: {error}</p>
+      </div>
+    )
+  }
+
+  // 10) Main JSX
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -205,8 +187,14 @@ export default function LaptopsPage() {
           </div>
 
           <div className="grid md:grid-cols-5 gap-4">
-            <Input placeholder="Search laptops..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            {/* Search */}
+            <Input
+              placeholder="Search laptops..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
 
+            {/* Brand */}
             <Select value={selectedBrand} onValueChange={setSelectedBrand}>
               <SelectTrigger>
                 <SelectValue placeholder="Brand" />
@@ -221,20 +209,22 @@ export default function LaptopsPage() {
               </SelectContent>
             </Select>
 
+            {/* Sub‐Category (e.g. “Gaming” / “Business” / etc) */}
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
+            {/* Price Range */}
             <Select value={priceRange} onValueChange={setPriceRange}>
               <SelectTrigger>
                 <SelectValue placeholder="Price Range" />
@@ -248,6 +238,7 @@ export default function LaptopsPage() {
               </SelectContent>
             </Select>
 
+            {/* Sort By */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
                 <SelectValue placeholder="Sort By" />
@@ -263,54 +254,67 @@ export default function LaptopsPage() {
           </div>
         </Card>
 
-        {/* Results */}
+        {/* Results Header */}
         <div className="flex justify-between items-center mb-6">
           <p className="text-gray-600">
             Showing {sortedLaptops.length} of {laptops.length} laptops
           </p>
         </div>
 
-        {/* Products Grid */}
+        {/* Grid of Laptops */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedLaptops.map((laptop) => (
-            <Card
-              key={laptop.id}
-              className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-white"
-            >
-              <div className="relative">
-                <img
-                  src={laptop.image || "/placeholder.svg"}
-                  alt={laptop.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3">
-                  <Badge className="bg-red-500 text-white">Save ${laptop.originalPrice - laptop.price}</Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    toggleFavorite(laptop.id)
-                  }}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${favorites.includes(laptop.id) ? "fill-red-500 text-red-500" : "text-gray-600"}`}
-                  />
-                </Button>
-              </div>
+          {sortedLaptops.map((laptop,index) => {
+            // Create a stable “uniqueKey” for favorites (e.g. category + name)
+            const uniqueKey = `${laptop.category}-${laptop.name}`
 
-              <CardContent className="p-6">
-                <div className="space-y-3">
+            return (
+              <Card
+                key={index}
+                className="group cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden bg-white"
+              >
+                <div className="relative">
+                  <img
+                    src={laptop.imageUrl || "/placeholder.svg"}
+                    alt={laptop.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {laptop.originalPrice && laptop.originalPrice > laptop.price && (
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-red-500 text-white">
+                        Save ${laptop.originalPrice - laptop.price}
+                      </Badge>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm hover:bg-white"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleFavorite(uniqueKey)
+                    }}
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${
+                        favorites.includes(uniqueKey)
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
+                      }`}
+                    />
+                  </Button>
+                </div>
+
+                <CardContent className="p-6 space-y-3">
                   <div>
                     <p className="text-sm text-gray-500 font-medium">{laptop.brand}</p>
                     <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                       {laptop.name}
                     </h3>
-                    <Badge variant="outline" className="mt-1">
-                      {laptop.category}
-                    </Badge>
+                    {laptop.category && (
+                      <Badge variant="outline" className="mt-1">
+                        {laptop.category}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -318,32 +322,47 @@ export default function LaptopsPage() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`h-4 w-4 ${i < Math.floor(laptop.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                          className={`h-4 w-4 ${
+                            i < Math.floor(laptop.rating ?? 0)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                          }`}
                         />
                       ))}
                     </div>
-                    <span className="text-sm text-gray-600">({laptop.reviews})</span>
+                    <span className="text-sm text-gray-600">({laptop.reviews ?? 0})</span>
                   </div>
 
-                  <p className="text-sm text-gray-600">{laptop.description}</p>
+                  {laptop.description && (
+                    <p className="text-sm text-gray-600">{laptop.description}</p>
+                  )}
 
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1">
-                      {laptop.specs.slice(0, 2).map((spec, idx) => (
-                        <span key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                          {spec}
-                        </span>
-                      ))}
-                    </div>
+                  {/* Show first two specs if available */}
+                  <div className="flex flex-wrap gap-1">
+                    {laptop.specs?.slice(0, 2).map((spec, idx) => (
+                      <span key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {spec}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-2xl font-bold text-gray-900">${laptop.price}</span>
-                        <span className="text-sm text-gray-500 line-through">${laptop.originalPrice}</span>
+                        <span className="text-2xl font-bold text-gray-900">
+                          ${laptop.price}
+                        </span>
+                        {laptop.originalPrice && (
+                          <span className="text-sm text-gray-500 line-through">
+                            ${laptop.originalPrice}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-green-600 font-medium">{laptop.stock} in stock</p>
+                      {laptop.stock !== undefined && (
+                        <p className="text-xs text-green-600 font-medium">
+                          {laptop.stock} in stock
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -351,21 +370,23 @@ export default function LaptopsPage() {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={(e) => {
                       e.preventDefault()
-                      handleAddToCart(laptop)
+                      handleAddToCart(laptop,index)
                     }}
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     Add to Cart
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
         {sortedLaptops.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No laptops found matching your criteria.</p>
+            <p className="text-gray-500 text-lg">
+              No laptops found matching your criteria.
+            </p>
             <Button
               variant="outline"
               className="mt-4"
