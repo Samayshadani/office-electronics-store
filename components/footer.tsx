@@ -10,9 +10,9 @@ export function Footer() {
           <div className="space-y-6">
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">OE</span>
+                <span className="text-white font-bold text-sm">DD</span>
               </div>
-              <span className="font-bold text-xl">Office Electronics</span>
+              <span className="font-bold text-xl">DASHING DEAL</span>
             </div>
             <p className="text-gray-300 leading-relaxed">
               Your trusted partner for premium office electronics. We provide cutting-edge technology solutions to

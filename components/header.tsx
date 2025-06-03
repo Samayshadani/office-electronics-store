@@ -22,9 +22,9 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">OE</span>
+              <span className="text-white font-bold text-sm">DD</span>
             </div>
-            <span className="font-bold text-xl text-gray-900 pr-8">Office Electronics</span>
+            <span className="font-bold text-xl text-gray-900 pr-8">DASHING DEAL</span>
           </Link>
 
           {/* Desktop Navigation */}
